@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice App</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top nav */
+    .nav {
+      display: none;
+      background: #111827;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    body.authed .nav { display: flex; }
+    .nav .brand { font-weight: 600; margin-right: auto; }
+    .nav a {
+      color: #d1d5db;
+      text-decoration: none;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9375rem;
+    }
+    .nav a:hover { background: #1f2937; color: #fff; }
+    .nav a.active { background: #1f2937; color: #fff; }
+    .nav .logout-link {
+      background: transparent; color: #d1d5db; border: none;
+      cursor: pointer; font-size: 0.9375rem; padding: 0.375rem 0.5rem;
+    }
+    .nav .logout-link:hover { color: #fff; }
+
+    /* Content */
+    .content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+    body.authed .content { align-items: flex-start; }
+
+    .page { display: none; width: 100%; }
+    .page.active { display: flex; justify-content: center; }
+
+    .card {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 480px;
+    }
+    .card.wide { max-width: 760px; }
+    h1 { margin: 0 0 1.25rem; font-size: 1.5rem; color: #111827; }
+
+    label { display: block; font-size: 0.875rem; color: #374151; margin-bottom: 0.375rem; }
+    input, textarea, select {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      font-family: inherit;
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+
+    button {
+      padding: 0.625rem 0.75rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover { background: #1d4ed8; }
+    button.full { width: 100%; }
+    button.secondary {
+      background: transparent;
+      color: #4b5563;
+      border: 1px solid #d1d5db;
+    }
+    button.secondary:hover { background: #f9fafb; color: #111827; }
+
+    .row { display: flex; gap: 0.5rem; }
+    .row > button { flex: 1; }
+
+    .error { color: #b91c1c; font-size: 0.875rem; margin-bottom: 0.75rem; display: none; }
+    .message { color: #047857; font-size: 0.875rem; margin-top: 0.75rem; display: none; }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      gap: 1rem;
+    }
+    .header-row h1 { margin: 0; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td {
+      text-align: left;
+      padding: 0.625rem 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.9375rem;
+    }
+    th { background: #f9fafb; color: #374151; font-weight: 600; }
+    .empty {
+      padding: 1.5rem;
+      text-align: center;
+      color: #6b7280;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <span class="brand">Invoice App</span>
+    <a href="#/items" data-route="#/items">Item Master</a>
+    <a href="#/invoices" data-route="#/invoices">Invoice Creation</a>
+    <button class="logout-link" id="logout-btn" type="button">Logout</button>
+  </nav>
+
+  <div class="content">
+    <!-- Login -->
+    <section id="login-page" class="page">
+      <div class="card">
+        <h1>Login</h1>
+        <form id="login-form">
+          <label for="username">Username</label>
+          <input id="username" type="text" autocomplete="username" required />
+
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" required />
+
+          <div id="login-error" class="error">Please enter username and password.</div>
+
+          <button class="full" type="submit">Login</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Item Master -->
+    <section id="items-page" class="page">
+      <div class="card wide">
+        <div class="header-row">
+          <h1>Item Master</h1>
+          <button id="new-item-btn" type="button">Create New Item</button>
+        </div>
+        <table id="items-table">
+          <thead>
+            <tr>
+              <th>Item name</th>
+              <th>Quantity available</th>
+              <th>Sales price</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+        <div id="items-empty" class="empty">No items yet. Click "Create New Item" to add one.</div>
+      </div>
+    </section>
+
+    <!-- New Item form -->
+    <section id="new-item-page" class="page">
+      <div class="card">
+        <div class="header-row"><h1>Create New Item</h1></div>
+        <form id="new-item-form">
+          <label for="item-name">Item name</label>
+          <input id="item-name" type="text" required />
+
+          <label for="item-qty">Quantity available</label>
+          <input id="item-qty" type="number" min="0" step="1" required />
+
+          <label for="item-price">Price</label>
+          <input id="item-price" type="number" min="0" step="0.01" required />
+
+          <div class="row">
+            <button class="secondary" type="button" id="item-cancel-btn">Cancel</button>
+            <button type="submit">Submit</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Invoice dashboard -->
+    <section id="invoice-page" class="page">
+      <div class="card wide">
+        <div class="header-row">
+          <h1>Invoice Creation</h1>
+          <button id="create-invoice-btn" type="button">Create Invoice</button>
+        </div>
+        <p style="color:#4b5563; margin-top:0;">Welcome, <span id="welcome-user"></span>.</p>
+
+        <h2 style="margin: 1.25rem 0 0.5rem; font-size: 1.125rem; color:#111827;">Invoice Created</h2>
+        <table id="invoices-table">
+          <thead>
+            <tr>
+              <th>Invoice number</th>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+          <tbody id="invoices-tbody"></tbody>
+        </table>
+        <div id="invoices-empty" class="empty">No invoices yet.</div>
+      </div>
+    </section>
+
+    <!-- Create Invoice form -->
+    <section id="create-invoice-page" class="page">
+      <div class="card">
+        <div class="header-row"><h1>Create Invoice</h1></div>
+        <form id="create-invoice-form">
+          <label for="invoice-number">Invoice number</label>
+          <input id="invoice-number" type="text" required />
+
+          <label for="invoice-item">Item name</label>
+          <select id="invoice-item" required></select>
+
+          <label for="invoice-amount">Amount</label>
+          <input id="invoice-amount" type="number" min="1" step="1" required />
+
+          <label for="invoice-price">Price</label>
+          <input id="invoice-price" type="number" min="0" step="0.01" required />
+
+          <div id="invoice-error" class="error"></div>
+
+          <div class="row">
+            <button class="secondary" type="button" id="cancel-btn">Cancel</button>
+            <button type="submit">Save Invoice</button>
+          </div>
+          <div id="invoice-saved-message" class="message">Invoice saved.</div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const routes = {
+      '#/login': 'login-page',
+      '#/items': 'items-page',
+      '#/items/new': 'new-item-page',
+      '#/invoices': 'invoice-page',
+      '#/invoices/new': 'create-invoice-page',
+    };
+    const protectedRoutes = ['#/items', '#/items/new', '#/invoices', '#/invoices/new'];
+
+    const state = {
+      user: null,
+      route: '#/login',
+      items: [],         // [{id, name, qty, price}]
+      invoices: [],      // [{number, itemName, qty, price}]
+    };
+
+    async function loadFromServer() {
+      try {
+        const [items, invoices] = await Promise.all([
+          fetch('/api/items').then(r => r.json()),
+          fetch('/api/invoices').then(r => r.json()),
+        ]);
+        state.items = Array.isArray(items) ? items : [];
+        state.invoices = Array.isArray(invoices) ? invoices : [];
+      } catch (e) {
+        console.error('Failed to load data from server:', e);
+      }
+    }
+
+    function setHash(hash) {
+      try {
+        if (window.location.hash !== hash) {
+          window.history.replaceState(null, '', hash);
+        }
+      } catch (_) { /* sandboxed iframes can block history API */ }
+    }
+
+    function render() {
+      let route = state.route;
+      if (protectedRoutes.includes(route) && !state.user) route = '#/login';
+      if (route === '#/login' && state.user) route = '#/invoices';
+
+      state.route = route;
+      setHash(route);
+      document.body.classList.toggle('authed', !!state.user);
+
+      const pageId = routes[route] || 'login-page';
+      document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+
+      document.querySelectorAll('.nav a').forEach(a => {
+        a.classList.toggle('active', route.startsWith(a.dataset.route));
+      });
+
+      if (pageId === 'invoice-page') {
+        document.getElementById('welcome-user').textContent = state.user || '';
+        renderInvoicesTable();
+      }
+      if (pageId === 'items-page') renderItemsTable();
+      if (pageId === 'create-invoice-page') {
+        renderItemsDropdown();
+        document.getElementById('invoice-error').style.display = 'none';
+        document.getElementById('invoice-saved-message').style.display = 'none';
+      }
+    }
+
+    function navigate(hash) {
+      state.route = hash;
+      render();
+    }
+
+    function renderItemsTable() {
+      const tbody = document.getElementById('items-tbody');
+      const empty = document.getElementById('items-empty');
+      const table = document.getElementById('items-table');
+      tbody.innerHTML = '';
+      if (state.items.length === 0) {
+        empty.style.display = 'block';
+        table.style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      table.style.display = '';
+      for (const item of state.items) {
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td'); nameTd.textContent = item.name;
+        const qtyTd = document.createElement('td'); qtyTd.textContent = item.qty;
+        const priceTd = document.createElement('td'); priceTd.textContent = Number(item.price).toFixed(2);
+        tr.append(nameTd, qtyTd, priceTd);
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderInvoicesTable() {
+      const tbody = document.getElementById('invoices-tbody');
+      const empty = document.getElementById('invoices-empty');
+      const table = document.getElementById('invoices-table');
+      tbody.innerHTML = '';
+      if (state.invoices.length === 0) {
+        empty.style.display = 'block';
+        table.style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      table.style.display = '';
+      for (const inv of state.invoices) {
+        const tr = document.createElement('tr');
+        const numTd = document.createElement('td'); numTd.textContent = inv.number;
+        const itemTd = document.createElement('td'); itemTd.textContent = inv.itemName;
+        const qtyTd = document.createElement('td'); qtyTd.textContent = inv.qty;
+        const priceTd = document.createElement('td'); priceTd.textContent = Number(inv.price).toFixed(2);
+        tr.append(numTd, itemTd, qtyTd, priceTd);
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderItemsDropdown() {
+      const select = document.getElementById('invoice-item');
+      select.innerHTML = '';
+      if (state.items.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No items available — add one in Item Master';
+        opt.defaultSelected = true;
+        select.appendChild(opt);
+        return;
+      }
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select an item';
+      placeholder.disabled = true;
+      placeholder.defaultSelected = true;
+      select.appendChild(placeholder);
+      for (const item of state.items) {
+        const opt = document.createElement('option');
+        opt.value = String(item.id);
+        opt.textContent = `${item.name} (available: ${item.qty})`;
+        select.appendChild(opt);
+      }
+    }
+
+    // Login
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const loginError = document.getElementById('login-error');
+      if (!username || !password) { loginError.style.display = 'block'; return; }
+      loginError.style.display = 'none';
+      state.user = username;
+      navigate('#/invoices');
+    });
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      state.user = null;
+      document.getElementById('login-form').reset();
+      navigate('#/login');
+    });
+
+    // Item Master
+    document.getElementById('new-item-btn').addEventListener('click', () => navigate('#/items/new'));
+    document.getElementById('item-cancel-btn').addEventListener('click', () => navigate('#/items'));
+
+    document.getElementById('new-item-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('item-name').value.trim();
+      const qty = parseInt(document.getElementById('item-qty').value, 10);
+      const price = parseFloat(document.getElementById('item-price').value);
+      if (!name || Number.isNaN(qty) || qty < 0 || Number.isNaN(price) || price < 0) return;
+      try {
+        const res = await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, qty, price }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'save failed');
+        const item = await res.json();
+        state.items.push(item);
+        document.getElementById('new-item-form').reset();
+        navigate('#/items');
+      } catch (err) {
+        alert('Failed to save item: ' + err.message);
+      }
+    });
+
+    // Invoice dashboard
+    document.getElementById('create-invoice-btn').addEventListener('click', () => navigate('#/invoices/new'));
+    document.getElementById('cancel-btn').addEventListener('click', () => navigate('#/invoices'));
+
+    // Create Invoice submit
+    document.getElementById('create-invoice-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('invoice-error');
+      const msg = document.getElementById('invoice-saved-message');
+      errEl.style.display = 'none';
+      msg.style.display = 'none';
+
+      const invoiceNumber = document.getElementById('invoice-number').value.trim();
+      const itemId = parseInt(document.getElementById('invoice-item').value, 10);
+      const amount = parseInt(document.getElementById('invoice-amount').value, 10);
+      const price = parseFloat(document.getElementById('invoice-price').value);
+
+      const showErr = (text) => { errEl.textContent = text; errEl.style.display = 'block'; };
+
+      if (!invoiceNumber) return showErr('Invoice number is required.');
+      const localItem = state.items.find(i => i.id === itemId);
+      if (!localItem) return showErr('Please select an item.');
+      if (Number.isNaN(amount) || amount <= 0) return showErr('Amount must be greater than zero.');
+      if (Number.isNaN(price) || price < 0) return showErr('Price must be zero or more.');
+      if (amount > localItem.qty) return showErr(`Only ${localItem.qty} of "${localItem.name}" available.`);
+
+      try {
+        const res = await fetch('/api/invoices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: invoiceNumber, itemId, qty: amount, price }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          return showErr(err.error || 'Failed to save invoice.');
+        }
+        const { invoice, item } = await res.json();
+        state.invoices.push(invoice);
+        const local = state.items.find(i => i.id === item.id);
+        if (local) local.qty = item.qty;
+
+        msg.textContent = 'Invoice saved.';
+        msg.style.display = 'block';
+        document.getElementById('create-invoice-form').reset();
+        renderItemsDropdown();
+      } catch (err) {
+        showErr('Network error: ' + err.message);
+      }
+    });
+
+    window.addEventListener('hashchange', () => {
+      state.route = window.location.hash || '#/login';
+      render();
+    });
+
+    state.route = (window.location.hash && routes[window.location.hash]) ? window.location.hash : '#/login';
+    render();
+    loadFromServer().then(render);
+  </script>
+</body>
+</html>
