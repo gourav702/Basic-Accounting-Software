@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: accounting-software
+    runtime: python
+    plan: free
+    buildCommand: ""
+    startCommand: python server.py

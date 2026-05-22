@@ -4,7 +4,7 @@ import csv
 import json
 import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ITEMS_CSV = os.path.join(ROOT, 'items.csv')
@@ -96,6 +96,32 @@ class Handler(SimpleHTTPRequestHandler):
             return self._create_invoice(data)
         return self._error(404, 'not found')
 
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        qs = parse_qs(parsed.query)
+        if path == '/api/items':
+            try:
+                item_id = int(qs.get('id', [''])[0])
+            except ValueError:
+                return self._error(400, 'invalid id')
+            items = load_items()
+            remaining = [i for i in items if i['id'] != item_id]
+            if len(remaining) == len(items):
+                return self._error(404, 'item not found')
+            save_items(remaining)
+            return self._json({'deleted': item_id})
+        if path == '/api/invoices':
+            number = qs.get('number', [''])[0].strip()
+            if not number:
+                return self._error(400, 'invoice number required')
+            invoices = load_invoices()
+            remaining = [i for i in invoices if i['number'] != number]
+            deleted = len(invoices) - len(remaining)
+            save_invoices(remaining)
+            return self._json({'deleted': deleted, 'number': number})
+        return self._error(404, 'not found')
+
     def _create_item(self, data):
         try:
             name = str(data['name']).strip()
@@ -156,5 +182,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     os.chdir(ROOT)
-    print('Serving http://localhost:3000  (Ctrl+C to stop)')
-    HTTPServer(('localhost', 3000), Handler).serve_forever()
+    # When PORT is set (e.g. on Render/Fly/Railway) bind publicly; otherwise
+    # only bind to localhost for local development.
+    port = int(os.environ.get('PORT', '3000'))
+    host = '0.0.0.0' if os.environ.get('PORT') else 'localhost'
+    display_host = 'localhost' if host == 'localhost' else host
+    print(f'Serving http://{display_host}:{port}  (Ctrl+C to stop)')
+    HTTPServer((host, port), Handler).serve_forever()
