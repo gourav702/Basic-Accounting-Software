@@ -230,6 +230,97 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({'deleted': deleted, 'number': number})
         return self._error(404, 'not found')
 
+    def do_PUT(self):
+        if not self._authorized():
+            return self._error(401, 'unauthorized: missing or wrong X-API-Key')
+        path = urlparse(self.path).path
+        length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(length).decode('utf-8') if length else ''
+        try:
+            data = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            return self._error(400, 'invalid json')
+        if path == '/api/items':
+            return self._update_item(data)
+        if path == '/api/invoices':
+            return self._update_invoice(data)
+        return self._error(404, 'not found')
+
+    def _update_item(self, data):
+        """Update an existing item's name/qty/price by id. Only provided fields change."""
+        try:
+            item_id = int(data['id'])
+        except (KeyError, ValueError, TypeError):
+            return self._error(400, 'a valid item id is required')
+        items = load_items()
+        item = next((i for i in items if i['id'] == item_id), None)
+        if item is None:
+            return self._error(404, 'item not found')
+        if 'name' in data:
+            name = str(data['name'] or '').strip()
+            if not name:
+                return self._error(400, 'name cannot be empty')
+            item['name'] = name
+        if 'qty' in data:
+            try:
+                qty = int(data['qty'])
+            except (ValueError, TypeError):
+                return self._error(400, 'qty must be a whole number')
+            if qty < 0:
+                return self._error(400, 'qty cannot be negative')
+            item['qty'] = qty
+        if 'price' in data:
+            try:
+                price = float(data['price'])
+            except (ValueError, TypeError):
+                return self._error(400, 'price must be a number')
+            if price < 0:
+                return self._error(400, 'price cannot be negative')
+            item['price'] = price
+        save_items(items)
+        return self._json(item)
+
+    def _update_invoice(self, data):
+        """Update an existing invoice's NON-stock fields by number (must be unique).
+        Quantity and item are intentionally not editable here, so stock stays correct."""
+        number = str(data.get('number', '') or '').strip()
+        if not number:
+            return self._error(400, 'invoice number is required')
+        invoices = load_invoices()
+        matches = [i for i in invoices if i['number'] == number]
+        if not matches:
+            return self._error(404, 'invoice not found')
+        if len(matches) > 1:
+            return self._error(400, f'{len(matches)} invoices share number "{number}"; '
+                                    f'cannot edit unambiguously')
+        inv = matches[0]
+        if 'customerName' in data:
+            inv['customerName'] = str(data['customerName'] or '').strip()
+        if 'customerEmail' in data:
+            inv['customerEmail'] = str(data['customerEmail'] or '').strip()
+        if 'notes' in data:
+            inv['notes'] = str(data['notes'] or '').strip()
+        if 'dueDate' in data:
+            dd = str(data['dueDate'] or '').strip()
+            if not valid_date(dd):
+                return self._error(400, 'due_date must be YYYY-MM-DD')
+            inv['dueDate'] = dd
+        if 'status' in data:
+            st = str(data['status'] or '').strip().lower()
+            if st not in ALLOWED_STATUSES:
+                return self._error(400, f'status must be one of {", ".join(ALLOWED_STATUSES)}')
+            inv['status'] = st
+        if 'price' in data:
+            try:
+                price = float(data['price'])
+            except (ValueError, TypeError):
+                return self._error(400, 'price must be a number')
+            if price < 0:
+                return self._error(400, 'price cannot be negative')
+            inv['price'] = price
+        save_invoices(invoices)
+        return self._json(inv)
+
     def _create_item(self, data):
         try:
             name = str(data['name']).strip()
