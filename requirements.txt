@@ -1,1 +1,3 @@
-# No third-party dependencies — only Python standard library is used.
+# Local mode (CSV) needs nothing extra — only the Python standard library.
+# Hosted mode (Postgres, when DATABASE_URL is set) needs the psycopg driver:
+psycopg[binary]>=3.1

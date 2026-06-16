@@ -220,6 +220,9 @@
               <th>Item</th>
               <th>Quantity</th>
               <th>Price</th>
+              <th>Customer</th>
+              <th>Due date</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="invoices-tbody"></tbody>
@@ -244,6 +247,25 @@
 
           <label for="invoice-price">Price</label>
           <input id="invoice-price" type="number" min="0" step="0.01" required />
+
+          <label for="invoice-customer">Customer name</label>
+          <input id="invoice-customer" type="text" />
+
+          <label for="invoice-email">Customer email</label>
+          <input id="invoice-email" type="email" />
+
+          <label for="invoice-due">Due date</label>
+          <input id="invoice-due" type="date" />
+
+          <label for="invoice-status">Status</label>
+          <select id="invoice-status">
+            <option value="unpaid">unpaid</option>
+            <option value="paid">paid</option>
+            <option value="overdue">overdue</option>
+          </select>
+
+          <label for="invoice-notes">Notes</label>
+          <textarea id="invoice-notes"></textarea>
 
           <div id="invoice-error" class="error"></div>
 
@@ -369,7 +391,10 @@
         const itemTd = document.createElement('td'); itemTd.textContent = inv.itemName;
         const qtyTd = document.createElement('td'); qtyTd.textContent = inv.qty;
         const priceTd = document.createElement('td'); priceTd.textContent = Number(inv.price).toFixed(2);
-        tr.append(numTd, itemTd, qtyTd, priceTd);
+        const custTd = document.createElement('td'); custTd.textContent = inv.customerName || '—';
+        const dueTd = document.createElement('td'); dueTd.textContent = inv.dueDate || '—';
+        const statusTd = document.createElement('td'); statusTd.textContent = inv.status || '';
+        tr.append(numTd, itemTd, qtyTd, priceTd, custTd, dueTd, statusTd);
         tbody.appendChild(tr);
       }
     }
@@ -394,7 +419,7 @@
       for (const item of state.items) {
         const opt = document.createElement('option');
         opt.value = String(item.id);
-        opt.textContent = `${item.name} (available: ${item.qty})`;
+        opt.textContent = item.name;
         select.appendChild(opt);
       }
     }
@@ -460,6 +485,11 @@
       const itemId = parseInt(document.getElementById('invoice-item').value, 10);
       const amount = parseInt(document.getElementById('invoice-amount').value, 10);
       const price = parseFloat(document.getElementById('invoice-price').value);
+      const customerName = document.getElementById('invoice-customer').value.trim();
+      const customerEmail = document.getElementById('invoice-email').value.trim();
+      const dueDate = document.getElementById('invoice-due').value;
+      const status = document.getElementById('invoice-status').value;
+      const notes = document.getElementById('invoice-notes').value.trim();
 
       const showErr = (text) => { errEl.textContent = text; errEl.style.display = 'block'; };
 
@@ -474,7 +504,8 @@
         const res = await fetch('/api/invoices', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: invoiceNumber, itemId, qty: amount, price }),
+          body: JSON.stringify({ number: invoiceNumber, itemId, qty: amount, price,
+            customerName, customerEmail, dueDate, status, notes }),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));

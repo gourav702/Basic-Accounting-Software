@@ -5,3 +5,12 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python server.py
+    envVars:
+      # Paste your Neon connection string here in the Render dashboard.
+      # When set, the app stores data in Postgres instead of CSV files.
+      - key: DATABASE_URL
+        sync: false
+      # A shared secret. Writes require an "X-API-Key" header matching this.
+      # Use the same value in the MCP server's INVOICE_API_SECRET.
+      - key: API_SECRET
+        sync: false
