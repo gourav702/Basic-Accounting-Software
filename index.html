@@ -221,8 +221,10 @@
               <th>Quantity</th>
               <th>Price</th>
               <th>Customer</th>
+              <th>Customer email</th>
               <th>Due date</th>
               <th>Status</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody id="invoices-tbody"></tbody>
@@ -392,9 +394,11 @@
         const qtyTd = document.createElement('td'); qtyTd.textContent = inv.qty;
         const priceTd = document.createElement('td'); priceTd.textContent = Number(inv.price).toFixed(2);
         const custTd = document.createElement('td'); custTd.textContent = inv.customerName || '—';
+        const emailTd = document.createElement('td'); emailTd.textContent = inv.customerEmail || '—';
         const dueTd = document.createElement('td'); dueTd.textContent = inv.dueDate || '—';
         const statusTd = document.createElement('td'); statusTd.textContent = inv.status || '';
-        tr.append(numTd, itemTd, qtyTd, priceTd, custTd, dueTd, statusTd);
+        const notesTd = document.createElement('td'); notesTd.textContent = inv.notes || '—';
+        tr.append(numTd, itemTd, qtyTd, priceTd, custTd, emailTd, dueTd, statusTd, notesTd);
         tbody.appendChild(tr);
       }
     }
